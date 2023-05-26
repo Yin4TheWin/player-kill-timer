@@ -1,0 +1,6 @@
+name: $name
+version: $version
+author: TheGatesDev
+api-version: $apiVersion
+description: $description
+main: io.github.thegatesdev.playertimer.PlayerTimer
