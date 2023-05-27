@@ -34,9 +34,7 @@ public class PlayerTimerHandler implements Listener {
         this(plugin, new Settings());
     }
 
-
     // -- HANDLING
-
 
     @EventHandler
     public void handlePlayerLogin(PlayerLoginEvent event) {
@@ -89,9 +87,7 @@ public class PlayerTimerHandler implements Listener {
         }
     }
 
-
     // -- TRACKERS
-
 
     private TimeTracker trackerOfOrNew(UUID playerId) {
         return playerTimeTrackers.computeIfAbsent(playerId, uuid -> new TimeTracker(settings.zoneId));
@@ -101,9 +97,7 @@ public class PlayerTimerHandler implements Listener {
         return playerTimeTrackers.get(playerId);
     }
 
-
     // -- TIME
-
 
     private ZonedDateTime lastResetTime() {
         return ZonedDateTime.of(LocalDate.now(), settings.resetTime, settings.zoneId);
@@ -115,6 +109,12 @@ public class PlayerTimerHandler implements Listener {
 
     public long timeLeft(TimeTracker tracker) {
         return Math.max(0, settings.maxTicksOnline - tracker.trackedTime());
+    }
+
+    // -- GET / SET
+
+    public Settings settings() {
+        return settings;
     }
 
     // --
