@@ -27,6 +27,7 @@ public class PlayerTimerHandler implements Listener {
     public PlayerTimerHandler(Plugin plugin, Settings settings) {
         this.plugin = plugin;
         this.settings = settings;
+        Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public PlayerTimerHandler(Plugin plugin) {
