@@ -75,8 +75,16 @@ public class PlayerTimerHandler implements Listener {
                         Date.from(nextResetTime().toInstant()),
                         "PlayerTimer plugin"
                 );
+                finishCurrent();
             }
             updateSchedule();
+        }
+
+        private void finishCurrent() {
+            current.tracker.stopTracking();
+            current.tracker.reset();
+            activeTrackers.poll();
+            current = null;
         }
 
         public void updateSchedule() {
