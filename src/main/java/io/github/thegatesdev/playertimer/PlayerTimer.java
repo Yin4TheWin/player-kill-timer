@@ -15,5 +15,6 @@ public class PlayerTimer extends JavaPlugin {
         Bukkit.getLogger().info("Time limit: " + s.maxTicksOnline / 20 / 60 + " minutes");
         Bukkit.getLogger().info("Resets at: " + s.resetTime.toString());
         Bukkit.getLogger().info("Timezone: " + s.zoneId.getId());
+        playerTimerHandler.init();
     }
 }

@@ -22,16 +22,21 @@ public class PlayerTimerHandler implements Listener {
 
     private final Map<UUID, TimeTracker> playerTimeTrackers = new TreeMap<>();
     private final PriorityQueue<ActiveTracker> activeTrackers = new PriorityQueue<>();
-    private final TrackerTicker trackerTicker = new TrackerTicker();
+    private TrackerTicker trackerTicker;
 
     public PlayerTimerHandler(Plugin plugin, Settings settings) {
         this.plugin = plugin;
         this.settings = settings;
-        Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     public PlayerTimerHandler(Plugin plugin) {
         this(plugin, new Settings());
+    }
+
+
+    public void init() {
+        trackerTicker = new TrackerTicker();
+        Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     // -- HANDLING
@@ -45,7 +50,8 @@ public class PlayerTimerHandler implements Listener {
         tracker.startTracking();
         activeTrackers.offer(new ActiveTracker(player.getUniqueId(), tracker));
 
-        trackerTicker.updateSchedule();
+        if (trackerTicker != null)
+            trackerTicker.updateSchedule();
     }
 
     @EventHandler
