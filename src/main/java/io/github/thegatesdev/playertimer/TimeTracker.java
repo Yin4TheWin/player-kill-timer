@@ -18,22 +18,21 @@ public class TimeTracker {
     // -- TRACKING
 
     public void startTracking() {
-        if (activeSession) throw new RuntimeException("Already tracking time");
+        if (activeSession) return;
         lastStartTime = ZonedDateTime.now(zoneId);
         activeSession = true;
     }
 
     public void stopTracking() {
-        if (!activeSession) throw new RuntimeException("Already not tracking time");
+        if (!activeSession) return;
         trackedTime += sessionTime().toMillis();
         activeSession = false;
     }
 
     public void resetTo(ZonedDateTime minimumStartTime) {
-        if (activeSession && lastStartTime.isBefore(minimumStartTime)) {
+        if (activeSession && lastStartTime.isBefore(minimumStartTime))
             lastStartTime = minimumStartTime;
-            reset();
-        }
+        reset();
     }
 
     public void reset() {
