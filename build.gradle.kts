@@ -19,7 +19,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.19.4-R0.1-SNAPSHOT")
 }
 
-tasks{
+tasks {
     processResources {
         filteringCharset = Charsets.UTF_8.name()
         val props = mapOf(
@@ -37,5 +37,10 @@ tasks{
     compileJava {
         options.encoding = Charsets.UTF_8.name()
         options.release.set(17)
+    }
+
+    register<Copy>("copyJarToLocalServer") {
+        from(jar)
+        into("D:\\Coding\\Minecraft\\SERVER\\plugins")
     }
 }
