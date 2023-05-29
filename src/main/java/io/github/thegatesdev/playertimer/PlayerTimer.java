@@ -16,9 +16,9 @@ public class PlayerTimer extends JavaPlugin {
 
         var settings = new PlayerTimerHandler.Settings();
         if (config.isString("time-zone"))
-            settings.zoneId(ZoneId.of(Objects.requireNonNull(config.getString("timezone"))));
+            settings.zoneId(ZoneId.of(Objects.requireNonNull(config.getString("time-zone"))));
         if (config.isConfigurationSection("time-limit")) {
-            var section = Objects.requireNonNull(config.getConfigurationSection("timelimit"));
+            var section = Objects.requireNonNull(config.getConfigurationSection("time-limit"));
             settings.setMaxOnlineTime(
                     Duration.ofHours(section.getInt("hours", 0))
                             .plusMinutes(section.getInt("minutes", 0))
