@@ -38,11 +38,13 @@ public class PlayerTimerHandler implements Listener {
     @EventHandler
     public void handlePlayerLogin(PlayerLoginEvent event) {
         trackerTicker.startTracking(event.getPlayer().getUniqueId());
+        trackerTicker.updateSchedule();
     }
 
     @EventHandler
     public void handlePlayerLogout(PlayerQuitEvent event) {
         trackerTicker.stopTracking(event.getPlayer().getUniqueId());
+        trackerTicker.updateSchedule();
     }
 
 
@@ -100,18 +102,14 @@ public class PlayerTimerHandler implements Listener {
 
             tracker.startTracking();
             activeTrackers.offer(new ActiveTracker(playerId, tracker));
-
-            updateSchedule();
         }
 
-        public void stopTracking(UUID playerId) {
+        public boolean stopTracking(UUID playerId) {
             var tracker = trackerOf(playerId);
-            if (tracker == null) return;
+            if (tracker == null) return false;
 
             tracker.stopTracking();
-            var removed = activeTrackers.removeIf(activeTracker -> activeTracker.playerId.equals(playerId));
-
-            if (removed) updateSchedule();
+            return activeTrackers.removeIf(activeTracker -> activeTracker.playerId.equals(playerId));
         }
 
         // -- TRACKERS
