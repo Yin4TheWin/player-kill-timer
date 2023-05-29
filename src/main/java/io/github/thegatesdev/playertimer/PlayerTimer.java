@@ -28,9 +28,9 @@ public class PlayerTimer extends JavaPlugin {
         if (config.isConfigurationSection("reset-time")) {
             var section = Objects.requireNonNull(config.getConfigurationSection("reset-time"));
             settings.resetTime(LocalTime.of(
-                    section.getInt("hours", 0),
-                    section.getInt("minutes", 0),
-                    section.getInt("seconds", 0)
+                    section.getInt("hour", 0),
+                    section.getInt("minute", 0),
+                    section.getInt("second", 0)
             ));
         }
 
