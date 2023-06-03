@@ -1,4 +1,4 @@
-package io.github.thegatesdev.playertimer;
+package io.github.thegatesdev.playerdaytimer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;

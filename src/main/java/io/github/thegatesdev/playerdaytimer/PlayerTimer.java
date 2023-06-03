@@ -1,4 +1,4 @@
-package io.github.thegatesdev.playertimer;
+package io.github.thegatesdev.playerdaytimer;
 
 import org.bukkit.plugin.java.JavaPlugin;
 

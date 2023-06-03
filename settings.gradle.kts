@@ -1,2 +1,2 @@
-rootProject.name = "player-timer"
+rootProject.name = "player-day-timer"
 

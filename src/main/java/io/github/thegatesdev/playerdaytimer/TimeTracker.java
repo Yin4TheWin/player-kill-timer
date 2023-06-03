@@ -1,4 +1,4 @@
-package io.github.thegatesdev.playertimer;
+package io.github.thegatesdev.playerdaytimer;
 
 import java.time.Duration;
 import java.time.ZoneId;
