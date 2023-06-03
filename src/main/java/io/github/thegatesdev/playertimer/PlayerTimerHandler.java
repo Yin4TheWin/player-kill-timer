@@ -3,13 +3,16 @@ package io.github.thegatesdev.playertimer;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerLoginEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.*;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 public class PlayerTimerHandler implements Listener {
@@ -36,34 +39,35 @@ public class PlayerTimerHandler implements Listener {
     // -- HANDLING
 
     @EventHandler
-    public void handlePlayerLogin(PlayerLoginEvent event) {
+    public void handlePlayerLogin(PlayerJoinEvent event) {
         trackerTicker.startTracking(event.getPlayer().getUniqueId());
         trackerTicker.updateSchedule();
+        Bukkit.getLogger().info("Time left: " + millisLeft(trackerTicker.trackerOfOrNew(event.getPlayer().getUniqueId())) / 1000);
+        Bukkit.getLogger().info("Tracked time " + trackerTicker.trackerOf(event.getPlayer().getUniqueId()).trackedMillis() / 1000);
     }
 
     @EventHandler
     public void handlePlayerLogout(PlayerQuitEvent event) {
         trackerTicker.stopTracking(event.getPlayer().getUniqueId());
         trackerTicker.updateSchedule();
+        Bukkit.getLogger().info("Time left: " + millisLeft(trackerTicker.trackerOfOrNew(event.getPlayer().getUniqueId())) / 1000);
+        Bukkit.getLogger().info("Tracked time " + trackerTicker.trackerOf(event.getPlayer().getUniqueId()).trackedMillis() / 1000);
     }
 
 
-    private class TrackerTicker extends BukkitRunnable {
+    private class TrackerTicker {
         private final Map<UUID, TimeTracker> playerTimeTrackers = new TreeMap<>();
         private final PriorityQueue<ActiveTracker> activeTrackers = new PriorityQueue<>();
 
         private boolean isScheduled = false;
+        private BukkitTask activeTask;
         private ActiveTracker scheduledTracker;
 
-        @Override
-        public void run() {
+        public void nextTimeout() {
             if (scheduledTracker == null || !isScheduled) return;
 
-            var tracker = scheduledTracker.tracker;
-            if (timeLeft(tracker) != 0) return;
-
             stopTracking(scheduledTracker.playerId);
-            tracker.reset();
+            scheduledTracker.tracker.reset();
             doBan(scheduledTracker.playerId);
 
             isScheduled = false;
@@ -85,20 +89,27 @@ public class PlayerTimerHandler implements Listener {
 
         private void updateSchedule() {
             var current = activeTrackers.peek();
-            if (scheduledTracker == current) return;
 
-            if (isScheduled && !isCancelled()) cancel();
+            if (isScheduled) {
+                if (scheduledTracker == current) return;
+
+                isScheduled = false;
+                activeTask.cancel();
+            }
 
             scheduledTracker = current;
             if (scheduledTracker == null) return;
 
             isScheduled = true;
-            runTaskLater(plugin, timeLeft(scheduledTracker.tracker));
+
+            long millisLeft = millisLeft(scheduledTracker.tracker);
+            if (millisLeft == 0) nextTimeout();
+            else activeTask = Bukkit.getScheduler().runTaskLater(plugin, this::nextTimeout, millisLeft * 20 / 1000);
         }
 
         public void startTracking(UUID playerId) {
             var tracker = trackerOfOrNew(playerId);
-            tracker.resetTo(lastResetTime());
+            tracker.moveAfter(lastResetTime());
 
             tracker.startTracking();
             activeTrackers.offer(new ActiveTracker(playerId, tracker));
@@ -126,15 +137,18 @@ public class PlayerTimerHandler implements Listener {
     // -- TIME
 
     private ZonedDateTime lastResetTime() {
-        return ZonedDateTime.of(LocalDate.now(), settings.resetTime, settings.zoneId);
+        return nextResetTime().minusDays(1);
     }
 
     private ZonedDateTime nextResetTime() {
-        return lastResetTime().plusDays(1);
+        return ZonedDateTime.now(settings.zoneId).with(temporal ->
+                LocalTime.from(temporal).isBefore(settings.resetTime)
+                        ? temporal.with(settings.resetTime)
+                        : temporal.plus(Duration.ofDays(1)).with(settings.resetTime));
     }
 
-    public long timeLeft(TimeTracker tracker) {
-        return Math.max(0, settings.maxTicksOnline() - tracker.trackedTime());
+    public long millisLeft(TimeTracker tracker) {
+        return Math.max(0, settings.maxOnlineTime.toMillis() - tracker.trackedMillis());
     }
 
     // -- GET / SET
@@ -164,17 +178,19 @@ public class PlayerTimerHandler implements Listener {
             this.resetTime = resetTime;
             return this;
         }
-
-        private long maxTicksOnline() {
-            return maxOnlineTime.toSeconds() * 20;
-        }
     }
 
     private record ActiveTracker(UUID playerId, TimeTracker tracker) implements Comparable<ActiveTracker> {
 
         @Override
         public int compareTo(@NotNull PlayerTimerHandler.ActiveTracker o) {
-            return Long.compare(o.tracker.trackedTime(), tracker.trackedTime());
+            return Long.compare(o.tracker.trackedMillis(), tracker.trackedMillis());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ActiveTracker other)) return false;
+            return playerId.equals(other.playerId);
         }
     }
 }

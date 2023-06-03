@@ -8,7 +8,7 @@ public class TimeTracker {
     private final ZoneId zoneId;
 
     private long trackedTime;
-    private ZonedDateTime lastStartTime;
+    private ZonedDateTime sessionStartTime;
     private boolean activeSession = false;
 
     public TimeTracker(ZoneId zoneId) {
@@ -19,20 +19,21 @@ public class TimeTracker {
 
     public void startTracking() {
         if (activeSession) return;
-        lastStartTime = ZonedDateTime.now(zoneId);
+        sessionStartTime = ZonedDateTime.now(zoneId);
         activeSession = true;
     }
 
     public void stopTracking() {
         if (!activeSession) return;
-        trackedTime += sessionTime().toMillis();
+        trackedTime = trackedMillis();
         activeSession = false;
     }
 
-    public void resetTo(ZonedDateTime minimumStartTime) {
-        if (activeSession && lastStartTime.isBefore(minimumStartTime))
-            lastStartTime = minimumStartTime;
-        reset();
+    public void moveAfter(ZonedDateTime minimumStartTime) {
+        if (sessionStartTime != null && sessionStartTime.isBefore(minimumStartTime)) {
+            sessionStartTime = minimumStartTime;
+            reset();
+        }
     }
 
     public void reset() {
@@ -43,10 +44,10 @@ public class TimeTracker {
 
     public Duration sessionTime() {
         if (!activeSession) return Duration.ZERO;
-        return Duration.between(lastStartTime, ZonedDateTime.now(zoneId));
+        return Duration.between(sessionStartTime, ZonedDateTime.now(zoneId));
     }
 
-    public long trackedTime() {
+    public long trackedMillis() {
         return trackedTime + sessionTime().toMillis();
     }
 }
