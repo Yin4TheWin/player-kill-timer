@@ -42,16 +42,12 @@ public class PlayerTimerHandler implements Listener {
     public void handlePlayerLogin(PlayerJoinEvent event) {
         trackerTicker.startTracking(event.getPlayer().getUniqueId());
         trackerTicker.updateSchedule();
-        Bukkit.getLogger().info("Time left: " + millisLeft(trackerTicker.trackerOfOrNew(event.getPlayer().getUniqueId())) / 1000);
-        Bukkit.getLogger().info("Tracked time " + trackerTicker.trackerOf(event.getPlayer().getUniqueId()).trackedMillis() / 1000);
     }
 
     @EventHandler
     public void handlePlayerLogout(PlayerQuitEvent event) {
         trackerTicker.stopTracking(event.getPlayer().getUniqueId());
         trackerTicker.updateSchedule();
-        Bukkit.getLogger().info("Time left: " + millisLeft(trackerTicker.trackerOfOrNew(event.getPlayer().getUniqueId())) / 1000);
-        Bukkit.getLogger().info("Tracked time " + trackerTicker.trackerOf(event.getPlayer().getUniqueId()).trackedMillis() / 1000);
     }
 
 
