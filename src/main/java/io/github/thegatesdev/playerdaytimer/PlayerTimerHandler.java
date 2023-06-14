@@ -19,174 +19,129 @@ public class PlayerTimerHandler implements Listener {
     private final Plugin plugin;
     private final Settings settings;
 
-    private TrackerTicker trackerTicker;
+    private final Map<UUID, TimeTracker> trackers = new TreeMap<>();
+    private final Queue<ActiveTracker> activeTrackers = new PriorityQueue<>();
+
+    private boolean isScheduled;
+    private BukkitTask scheduledTask;
+    private ActiveTracker scheduledTracker;
 
     public PlayerTimerHandler(Plugin plugin, Settings settings) {
         this.plugin = plugin;
         this.settings = settings;
-    }
-
-    public PlayerTimerHandler(Plugin plugin) {
-        this(plugin, new Settings());
-    }
-
-
-    public void init() {
-        trackerTicker = new TrackerTicker();
         Bukkit.getServer().getPluginManager().registerEvents(this, plugin);
-    }
-
-    // -- HANDLING
-
-    @EventHandler
-    public void handlePlayerLogin(PlayerJoinEvent event) {
-        trackerTicker.startTracking(event.getPlayer().getUniqueId());
-        trackerTicker.updateSchedule();
-    }
-
-    @EventHandler
-    public void handlePlayerLogout(PlayerQuitEvent event) {
-        trackerTicker.stopTracking(event.getPlayer().getUniqueId());
-        trackerTicker.updateSchedule();
-    }
-
-
-    private class TrackerTicker {
-        private final Map<UUID, TimeTracker> playerTimeTrackers = new TreeMap<>();
-        private final PriorityQueue<ActiveTracker> activeTrackers = new PriorityQueue<>();
-
-        private boolean isScheduled = false;
-        private BukkitTask activeTask;
-        private ActiveTracker scheduledTracker;
-
-        public void nextTimeout() {
-            if (scheduledTracker == null || !isScheduled) return;
-
-            stopTracking(scheduledTracker.playerId);
-            scheduledTracker.tracker.reset();
-            doBan(scheduledTracker.playerId);
-
-            isScheduled = false;
-            updateSchedule();
-        }
-
-        private void doBan(UUID playerId) {
-            Bukkit.getServer().getOfflinePlayer(playerId).banPlayer(
-                    "Your maximum online-time of %sh %sm %ss has run out!"
-                            .formatted(settings.maxOnlineTime.toHours(),
-                                    settings.maxOnlineTime.toMinutes(),
-                                    settings.maxOnlineTime.getSeconds()),
-                    Date.from(nextResetTime().toInstant()),
-                    "PlayerTimer plugin"
-            );
-        }
-
-        // -- TICKER
-
-        private void updateSchedule() {
-            var current = activeTrackers.peek();
-
-            if (isScheduled) {
-                if (scheduledTracker == current) return;
-
-                isScheduled = false;
-                activeTask.cancel();
-            }
-
-            scheduledTracker = current;
-            if (scheduledTracker == null) return;
-
-            isScheduled = true;
-
-            long millisLeft = millisLeft(scheduledTracker.tracker);
-            if (millisLeft == 0) nextTimeout();
-            else activeTask = Bukkit.getScheduler().runTaskLater(plugin, this::nextTimeout, millisLeft * 20 / 1000);
-        }
-
-        public void startTracking(UUID playerId) {
-            var tracker = trackerOfOrNew(playerId);
-            tracker.moveAfter(lastResetTime());
-
-            tracker.startTracking();
-            activeTrackers.offer(new ActiveTracker(playerId, tracker));
-        }
-
-        public boolean stopTracking(UUID playerId) {
-            var tracker = trackerOf(playerId);
-            if (tracker == null) return false;
-
-            tracker.stopTracking();
-            return activeTrackers.removeIf(activeTracker -> activeTracker.playerId.equals(playerId));
-        }
-
-        // -- TRACKERS
-
-        private TimeTracker trackerOfOrNew(UUID playerId) {
-            return playerTimeTrackers.computeIfAbsent(playerId, uuid -> new TimeTracker(settings.zoneId));
-        }
-
-        private TimeTracker trackerOf(UUID playerId) {
-            return playerTimeTrackers.get(playerId);
-        }
-    }
-
-    // -- TIME
-
-    private ZonedDateTime lastResetTime() {
-        return nextResetTime().minusDays(1);
-    }
-
-    private ZonedDateTime nextResetTime() {
-        return ZonedDateTime.now(settings.zoneId).with(temporal ->
-                LocalTime.from(temporal).isBefore(settings.resetTime)
-                        ? temporal.with(settings.resetTime)
-                        : temporal.plus(Duration.ofDays(1)).with(settings.resetTime));
-    }
-
-    public long millisLeft(TimeTracker tracker) {
-        return Math.max(0, settings.maxOnlineTime.toMillis() - tracker.trackedMillis());
-    }
-
-    // -- GET / SET
-
-    public Settings settings() {
-        return settings;
     }
 
     // --
 
-    public static class Settings {
-        ZoneId zoneId = ZoneId.systemDefault();
-        LocalTime resetTime = LocalTime.MIDNIGHT;
-        Duration maxOnlineTime = Duration.ofHours(1);
+    @EventHandler
+    public void handlePlayerLogin(PlayerJoinEvent event) {
+        track(event.getPlayer().getUniqueId());
+    }
 
-        public Settings zoneId(ZoneId zoneId) {
-            this.zoneId = zoneId;
-            return this;
+    @EventHandler
+    public void handlePlayerLogout(PlayerQuitEvent event) {
+        noTrack(event.getPlayer().getUniqueId());
+    }
+
+    // --
+
+    private void onTimeout() {
+        if (!isScheduled || scheduledTracker == null) return;
+        isScheduled = false;
+
+        activeTrackers.poll();
+        noTrack(scheduledTracker.playerId);
+
+        scheduledTracker.tracker.reset();
+        doBan(scheduledTracker.playerId);
+
+        scheduledTracker = null;
+        scheduledTask = null;
+
+        updateSchedule();
+    }
+
+    private void updateSchedule() {
+        var active = activeTrackers.peek();
+        if (isScheduled) {
+            if (scheduledTracker == active) return;
+
+            scheduledTask.cancel();
+            isScheduled = false;
         }
 
-        public Settings setMaxOnlineTime(Duration maxOnlineTime) {
-            this.maxOnlineTime = maxOnlineTime;
-            return this;
-        }
+        scheduledTracker = active;
+        if (scheduledTracker == null) return;
 
-        public Settings resetTime(LocalTime resetTime) {
-            this.resetTime = resetTime;
-            return this;
+        long millisLeft = Math.max(0, settings.maxOnlineTime.toMillis() - scheduledTracker.tracker.trackedMillis());
+        if (millisLeft == 0) {
+            onTimeout();
+            return;
+        }
+        isScheduled = true;
+        scheduledTask = Bukkit.getScheduler().runTaskLater(plugin, this::onTimeout, (long) (millisLeft * 0.02));
+    }
+
+    private void track(UUID playerId) {
+        var tracker = trackerOfOrNew(playerId);
+        tracker.moveAfter(settings.lastReset());
+
+        activeTrackers.offer(new ActiveTracker(playerId, tracker));
+        tracker.startTracking();
+
+        updateSchedule();
+    }
+
+    private void noTrack(UUID playerId) {
+        var tracker = trackerOf(playerId);
+        if (tracker == null) return;
+
+        if (activeTrackers.removeIf(t -> t.playerId.equals(playerId))) {
+            tracker.stopTracking();
+            updateSchedule();
         }
     }
 
-    private record ActiveTracker(UUID playerId, TimeTracker tracker) implements Comparable<ActiveTracker> {
+    private TimeTracker trackerOfOrNew(UUID playerId) {
+        return trackers.computeIfAbsent(playerId, uuid -> new TimeTracker(settings.timeZone));
+    }
 
+    private TimeTracker trackerOf(UUID playerId) {
+        return trackers.get(playerId);
+    }
+
+    // --
+
+    private void doBan(UUID playerId) {
+        Bukkit.getServer().getOfflinePlayer(playerId).banPlayer(
+                "Your maximum online-time of %sh %sm %ss has run out!"
+                        .formatted(settings.maxOnlineTime.toHours(),
+                                settings.maxOnlineTime.toMinutes(),
+                                settings.maxOnlineTime.getSeconds()),
+                Date.from(settings.lastReset().toInstant()),
+                "PlayerTimer plugin"
+        );
+    }
+
+    // --
+
+    private record ActiveTracker(UUID playerId, TimeTracker tracker) implements Comparable<ActiveTracker> {
         @Override
         public int compareTo(@NotNull PlayerTimerHandler.ActiveTracker o) {
             return Long.compare(o.tracker.trackedMillis(), tracker.trackedMillis());
         }
+    }
 
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof ActiveTracker other)) return false;
-            return playerId.equals(other.playerId);
+    public record Settings(ZoneId timeZone, LocalTime resetTime, Duration maxOnlineTime) {
+        public ZonedDateTime nextReset() {
+            return ZonedDateTime.now(timeZone).with(temporal ->
+                    (LocalTime.from(temporal).isBefore(resetTime) ? temporal : temporal.plus(Duration.ofDays(1)))
+                            .with(resetTime));
+        }
+
+        public ZonedDateTime lastReset() {
+            return nextReset().minusDays(1);
         }
     }
 }

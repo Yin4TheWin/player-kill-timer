@@ -50,4 +50,8 @@ public class TimeTracker {
     public long trackedMillis() {
         return trackedTime + sessionTime().toMillis();
     }
+
+    public boolean isActive() {
+        return activeSession;
+    }
 }
