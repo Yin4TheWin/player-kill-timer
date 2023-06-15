@@ -41,6 +41,6 @@ tasks {
 
     register<Copy>("copyJarToLocalServer") {
         from(jar)
-        into("D:\\Coding\\Minecraft\\SERVER\\plugins")
+        into("E:\\Coding\\Minecraft\\SERVER\\plugins")
     }
 }
