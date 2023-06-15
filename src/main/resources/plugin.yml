@@ -3,4 +3,4 @@ version: $version
 author: TheGatesDev
 api-version: $apiVersion
 description: $description
-main: io.github.thegatesdev.playertimer.PlayerTimer
+main: io.github.thegatesdev.playertimer.PlayerDayTimer

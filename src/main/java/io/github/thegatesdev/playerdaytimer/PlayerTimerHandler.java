@@ -120,7 +120,7 @@ public class PlayerTimerHandler implements Listener {
                                 settings.maxOnlineTime.toMinutes(),
                                 settings.maxOnlineTime.getSeconds()),
                 Date.from(settings.lastReset().toInstant()),
-                "PlayerTimer plugin"
+                "PlayerDayTimer plugin"
         );
     }
 

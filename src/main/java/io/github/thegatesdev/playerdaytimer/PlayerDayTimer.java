@@ -6,7 +6,7 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
-public class PlayerTimer extends JavaPlugin {
+public class PlayerDayTimer extends JavaPlugin {
     @Override
     public void onEnable() {
         new PlayerTimerHandler(this, loadSettings());
