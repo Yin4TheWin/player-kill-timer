@@ -3,8 +3,8 @@ plugins {
 }
 
 group = "io.github.thegatesdev"
-version = "0.2"
-description = "Limit player online time"
+version = "0.3"
+description = "Limit daily player online time"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 java {
