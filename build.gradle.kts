@@ -4,7 +4,7 @@ plugins {
 
 group = "io.github.thegatesdev"
 version = "0.3"
-description = "Limit daily player online time"
+description = "Kill player when timer expires"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 java {
@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
 }
 
 tasks {
@@ -26,7 +26,7 @@ tasks {
             "name" to project.name,
             "version" to project.version,
             "description" to project.description,
-            "apiVersion" to "1.20"
+            "apiVersion" to "1.21"
         )
         inputs.properties(props)
         filesMatching("plugin.yml") {
@@ -37,10 +37,5 @@ tasks {
     compileJava {
         options.encoding = Charsets.UTF_8.name()
         options.release.set(17)
-    }
-
-    register<Copy>("copyJarToLocalServer") {
-        from(jar)
-        into("E:\\Coding\\Minecraft\\SERVER\\plugins")
     }
 }
