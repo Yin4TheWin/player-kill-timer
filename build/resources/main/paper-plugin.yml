@@ -1,4 +1,0 @@
-name: KillTimer
-version: '1.0-SNAPSHOT'
-main: org.yinftw.killTimer.KillTimer
-api-version: '1.21'
