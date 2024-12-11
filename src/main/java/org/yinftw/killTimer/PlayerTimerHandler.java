@@ -1,14 +1,16 @@
-package io.github.thegatesdev.playerdaytimer;
+package org.yinftw.killTimer;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
-
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -22,6 +24,8 @@ public class PlayerTimerHandler implements Listener {
     private final Map<UUID, TimeTracker> trackers = new TreeMap<>();
     private final Queue<ActiveTracker> activeTrackers = new PriorityQueue<>();
 
+    private boolean specialKillTriggered = false;
+
     private boolean isScheduled;
     private BukkitTask scheduledTask;
     private ActiveTracker scheduledTracker;
@@ -33,9 +37,38 @@ public class PlayerTimerHandler implements Listener {
     }
 
     // --
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
 
+        // Check if the special kill condition was triggered
+        if (specialKillTriggered) {
+            // Set the custom death message if the special condition is met
+            event.setDeathMessage(player.getName() + " is out of time");
+            // Reset the trigger to avoid this message on other deaths
+            specialKillTriggered = false;
+        }
+    }
     @EventHandler
     public void handlePlayerLogin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        UUID playerId = player.getUniqueId();
+
+        // Retrieve the player's tracker
+        TimeTracker tracker = trackerOf(playerId);
+        long trackedMillis = tracker != null ? tracker.trackedMillis() : 0;
+        long maxMillis = settings.maxOnlineTime.toMillis();
+
+        // Calculate remaining time
+        long remainingMillis = Math.max(0, maxMillis - trackedMillis);
+
+        // Convert remaining time into hours, minutes, and seconds
+        long hours = remainingMillis / 3600000;
+        long minutes = (remainingMillis % 3600000) / 60000;
+        long seconds = (remainingMillis % 60000) / 1000;
+
+        event.getPlayer().sendMessage(Component.text("Welcome "+event.getPlayer().getName()+"! You will die in %sh %sm %ss."
+                .formatted(hours, minutes, seconds)));
         track(event.getPlayer().getUniqueId());
     }
 
@@ -114,14 +147,8 @@ public class PlayerTimerHandler implements Listener {
     // --
 
     private void doBan(UUID playerId) {
-        Bukkit.getServer().getOfflinePlayer(playerId).banPlayer(
-                "Your maximum online-time of %sh %sm %ss has run out!"
-                        .formatted(settings.maxOnlineTime.toHours(),
-                                settings.maxOnlineTime.toMinutes(),
-                                settings.maxOnlineTime.getSeconds()),
-                Date.from(settings.lastReset().toInstant()),
-                "PlayerDayTimer plugin"
-        );
+        specialKillTriggered = true;
+        Bukkit.getPlayer(playerId).setHealth(0.0);
     }
 
     // --
@@ -133,11 +160,10 @@ public class PlayerTimerHandler implements Listener {
         }
     }
 
-    public record Settings(ZoneId timeZone, LocalTime resetTime, Duration maxOnlineTime) {
+    public record Settings(ZoneId timeZone, Duration maxOnlineTime) {
         public ZonedDateTime nextReset() {
             return ZonedDateTime.now(timeZone).with(temporal ->
-                    (LocalTime.from(temporal).isBefore(resetTime) ? temporal : temporal.plus(Duration.ofDays(1)))
-                            .with(resetTime));
+                    (temporal));
         }
 
         public ZonedDateTime lastReset() {

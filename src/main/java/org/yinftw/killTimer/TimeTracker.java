@@ -1,4 +1,4 @@
-package io.github.thegatesdev.playerdaytimer;
+package org.yinftw.killTimer;
 
 import java.time.Duration;
 import java.time.ZoneId;
